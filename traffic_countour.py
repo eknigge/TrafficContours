@@ -5,6 +5,7 @@ from matplotlib.colors import ListedColormap
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.dates as mdates
 import datetime
+import re
 
 class ContourPlot():
     _df = None
@@ -19,22 +20,28 @@ class ContourPlot():
     _milepost_increment = 0.1
     _old_indicies = None
     _cmap = None
+    _dates = []
 
     def __init__(self, filename):
         self._df = None
         self._filename = filename
         self.find_data_indicies()
 
-        start = self._data_indicies[0][0] 
-        end = self._data_indicies[0][1]
-        self._df = pd.read_csv(filename, delimiter='\s+', skiprows=start, nrows=end-start)
+        for i in range(len(self._data_indicies)):
+            start = self._data_indicies[i][0] 
+            end = self._data_indicies[i][1]
+            contour_title = self._dates[i]
+            self._df = pd.read_csv(filename, delimiter='\s+', skiprows=start, nrows=end-start)
 
+            self.draw_contour_plot(start, end, contour_title)
+
+    def draw_contour_plot(self, start, end, contour_title):
         self.set_contour_mileposts()
-        self.set_equidistant_mileposts()
         self.convert_values_to_decimal()
+        self.set_equidistant_mileposts()
         self.interpolate_data()
         self.create_color_map()
-        self.draw_contour()
+        self.draw_contour(title=contour_title)
 
     def create_color_map(self):
         colors = ['green','yellow','red','black']
@@ -42,7 +49,8 @@ class ContourPlot():
         cmap1 = LinearSegmentedColormap.from_list('mycmap', colors)
         self._cmap = LinearSegmentedColormap.from_list("mycmap", list(zip(nodes, colors)))
 
-    def draw_contour(self):
+    def draw_contour(self, title='Contour Plot'):
+        plt.rcParams.update({'figure.autolayout': True})
         fig, ax = plt.subplots()
         hrs = mdates.HourLocator()
         hrs_fmt = mdates.DateFormatter('%HH')
@@ -51,12 +59,30 @@ class ContourPlot():
         y = self._df.columns.values
         X, Y = np.meshgrid(x, y)
         Z = self._df.T.values
+
         CS = ax.contourf(X, Y, Z, cmap = self._cmap)
         ax.xaxis.set_major_locator(hrs)
         ax.xaxis.set_major_formatter(hrs_fmt)
         plt.xticks(rotation=90)
-        fig.savefig('test.png', dpi=600)
+        ax.set_title('Date: ' + title)
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Milepost')
 
+        img_filename = self.img_output_name(title)
+        fig.savefig(img_filename, dpi=600)
+
+
+    def img_output_name(self, img_title):
+        out = ''
+        datetime_value = datetime.datetime.strptime(img_title, '%m/%d/%Y')
+        year = str(datetime_value.year)
+        month = str(datetime_value.month)
+        day = str(datetime_value.day)
+        if len(month) < 2:
+            month = '0' + month
+        if len(day) < 2:
+            day = '0' + day
+        return out + year + month + day + '.png'
 
     def convert_values_to_decimal(self):
         df = self._df
@@ -108,14 +134,19 @@ class ContourPlot():
     def find_data_indicies(self):
         start_indicies = []
         end_indicies = []
+        date_keyword = 'Date:'
+        p = re.compile('\d{2}/\d{2}/\d{4}')
         filename = self.get_filename()
         end_time = self.get_end_time()
         data = open(filename)
 
-        #get start and end index
+        #get start, end, and date index
         for c, i in enumerate(data):
             if 'Data Content' in i:
                 start_indicies.append(c+3)
+            elif date_keyword in i:
+                out = p.findall(i)[0]
+                self._dates.append(out)
             elif end_time in i:
                 end_indicies.append(c)
 
@@ -128,5 +159,6 @@ class ContourPlot():
                     )
 
 if __name__ == '__main__':
-    test_data = 'data.txt'
+    #test_data = 'data.txt'
+    test_data = 'big_data.txt'
     data = ContourPlot(test_data)
