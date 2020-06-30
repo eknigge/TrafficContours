@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib as mpl
 import matplotlib.dates as mdates
 import datetime
 import re
@@ -23,7 +24,6 @@ class ContourPlot():
     _dates = []
 
     def __init__(self, filename):
-        self._df = None
         self._filename = filename
         self.find_data_indicies()
 
@@ -32,7 +32,6 @@ class ContourPlot():
             end = self._data_indicies[i][1]
             contour_title = self._dates[i]
             self._df = pd.read_csv(filename, delimiter='\s+', skiprows=start, nrows=end-start)
-
             self.draw_contour_plot(start, end, contour_title)
 
     def draw_contour_plot(self, start, end, contour_title):
@@ -44,8 +43,8 @@ class ContourPlot():
         self.draw_contour(title=contour_title)
 
     def create_color_map(self):
-        colors = ['green','yellow','red','black']
-        nodes = [0.0, 0.15, 0.25, 1.0]
+        colors = ['green','yellow','red', 'darkred', 'black',  'black']
+        nodes = [0.0, 0.15, 0.22, 0.30, 0.5, 1.0]
         cmap1 = LinearSegmentedColormap.from_list('mycmap', colors)
         self._cmap = LinearSegmentedColormap.from_list("mycmap", list(zip(nodes, colors)))
 
@@ -68,8 +67,12 @@ class ContourPlot():
         ax.set_xlabel('Time')
         ax.set_ylabel('Milepost')
 
+        norm = mpl.colors.Normalize(vmin=0, vmax=1)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=self._cmap))
+
         img_filename = self.img_output_name(title)
         fig.savefig(img_filename, dpi=600)
+        plt.close()
 
 
     def img_output_name(self, img_title):
@@ -117,7 +120,7 @@ class ContourPlot():
 
     def set_contour_mileposts(self):
         df = self._df
-        np_array = np.array(df.columns)
+        np_array = np.array(df.columns).astype(np.float)
         self._milepost_max = self.round_to_interval(np_array.max())
         self._milepost_min = self.round_to_interval(np_array.min())
 
@@ -159,6 +162,6 @@ class ContourPlot():
                     )
 
 if __name__ == '__main__':
-    #test_data = 'data.txt'
-    test_data = 'big_data.txt'
+    test_data = 'data.txt'
+    test_data = '405_big_data.txt'
     data = ContourPlot(test_data)
