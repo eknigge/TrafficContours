@@ -27,10 +27,14 @@ class ContourPlot():
         self._filename = filename
         self.find_data_indicies()
 
+
         for i in range(len(self._data_indicies)):
             start = self._data_indicies[i][0] 
             end = self._data_indicies[i][1]
-            contour_title = self._dates[i]
+            try:
+                contour_title = self._dates[i]
+            except IndexError:
+                contour_title = '12/01/2020'
             self._df = pd.read_csv(filename, delimiter='\s+', skiprows=start, nrows=end-start)
             self.draw_contour_plot(start, end, contour_title)
 
@@ -58,8 +62,9 @@ class ContourPlot():
         y = self._df.columns.values
         X, Y = np.meshgrid(x, y)
         Z = self._df.T.values
+        normalize_values = mpl.colors.Normalize(vmin=0, vmax=100)
 
-        CS = ax.contourf(X, Y, Z, cmap = self._cmap)
+        CS = ax.contourf(X, Y, Z, cmap = self._cmap, norm=normalize_values)
         ax.xaxis.set_major_locator(hrs)
         ax.xaxis.set_major_formatter(hrs_fmt)
         plt.xticks(rotation=90)
@@ -162,6 +167,6 @@ class ContourPlot():
                     )
 
 if __name__ == '__main__':
+    test_data = '405_big_data_GP_N.txt'
     test_data = 'data.txt'
-    test_data = '405_big_data.txt'
     data = ContourPlot(test_data)
